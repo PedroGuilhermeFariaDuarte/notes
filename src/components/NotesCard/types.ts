@@ -1,8 +1,14 @@
 import { PropsWithChildren } from "react";
 
-export interface INoteCarsProps extends PropsWithChildren<unknown> {
+export type TNote = {
+    id?: string
     type: 1 | 2
-    title: string
+    title?: string
     description: string
     createdAt: Date | null
+}
+export interface INoteCarsProps extends PropsWithChildren<TNote> {
+    onCreated: (note: TNote | undefined) => void
+    onUpdated: (note: TNote | undefined) => void
+    onDeleted: (note: TNote | undefined) => void
 }

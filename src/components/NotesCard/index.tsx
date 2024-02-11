@@ -26,17 +26,20 @@ export function NotesCard(props: INoteCarsProps) {
             focus:ring-4 focus:ring-lime-400
           "
         >
-          <span className="text-small font-medium text-slate-300">
-            {
-              formatDistanceToNow(props.createdAt || '', {
-                locale: ptBR,
-                addSuffix: true
-              })
-            }
-          </span>
+        <span data-showDate={!props.title && true} className="hidden data-[showDate=true]:flex text-small font-medium text-slate-300">
+          {
+            formatDistanceToNow(props.createdAt || '', {
+              locale: ptBR,
+              addSuffix: true
+            })
+          }
+        </span>
 
-          <p className="text-small leading-6 text-slate-400">
-            {props.title}
+        <span data-showTitle={props.title && true} className="hidden data-[showTitle=true]:flex text-small font-medium text-slate-300">
+          {props.title}
+        </span>
+
+          <p className="text-small leading-6 text-slate-400">            
             {props.description}
           </p>
 
