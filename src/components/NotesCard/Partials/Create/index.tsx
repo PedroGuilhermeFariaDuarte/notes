@@ -1,14 +1,16 @@
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useState } from "react";
 import { toast } from "sonner";
+
 // Types
+import { speechRecognitionAPI } from "../../../../utils/Speech";
 import { ICreateProps } from "./types";
 
 export function Create({ title,onCreated }: ICreateProps) {
     const [shouldShowTextArea, setShouldShowTextArea] = useState(false)
     const [shouldShowRecordVoice, setShouldShowRecordVoice] = useState(false)
     const [isRecordingVoice, setIsRecordingVoice] = useState(false)
+    const [transcriptionVoiceRecord, setTranscriptionVoiceRecord] = useState('')
     
-
     function handleOnShouldShowTextArea() {
         try {
             setShouldShowRecordVoice(false)
@@ -71,13 +73,111 @@ export function Create({ title,onCreated }: ICreateProps) {
         }
     }
 
-    function handleStartRecordingVoice(){
+    const handleStartRecordingVoice = useCallback(async () => {
         try {
-            setIsRecordingVoice(true)            
+            if(!speechRecognitionAPI) {
+                toast.error("Seu navegador não suporta a API SpeechRecognition! :(")
+                handlerOnShouldShowRecordVoice()
+                handleStopRecordingVoice()
+                return
+            }
 
+            if(transcriptionVoiceRecord.length >= 1) {
+               const result =  await new Promise((resolve) => {
+                    setTimeout(() => {
+                        resolve(false)
+                    }, 5500)
+
+                    toast("Deseja apagar gravação anterior?", {
+                        action: {
+                            label: 'Sim',
+                            onClick: () => {                                
+                                resolve(true)
+                            }
+                        },
+                        duration: 5000,
+                    })
+                })
+
+                console.table(result)
+
+                if(result) setTranscriptionVoiceRecord('')
+            }
+
+            setIsRecordingVoice(true)                 
+
+            speechRecognitionAPI.lang = "pt-BR"
+            speechRecognitionAPI.continuous = true
+            speechRecognitionAPI.maxAlternatives = 1
+            speechRecognitionAPI.interimResults = true
+
+            speechRecognitionAPI.onresult = (event) => {
+                const transcription = Array.from(event.results).reduce((text, result) => {                    
+                    return text.concat(result?.[0]?.transcript || result[0] as unknown as string)
+                }, "")
+
+                const transcriptionParsed = transcriptionVoiceRecord.replace("finalizar", "").concat(transcription)
+
+                setTranscriptionVoiceRecord(transcriptionParsed)
+
+                handleStopSpeechBySecrectWord(transcription)
+            }
+
+            speechRecognitionAPI.onerror = (error) => {
+                const errorType = error.error
+                let message = ''
+
+                switch(errorType) {
+                    case 'not-allowed':
+                        message = 'Gravação de audio não foi permitida pelo usuário'
+                        break;
+                    case 'audio-capture':
+                        message = 'Não foi possivel capturar o audio'
+                        break;
+                    case 'service-not-allowed':
+                        message = 'Serviço de captura de audio indisponível'
+                        break;
+                    default:
+                        message = 'Não foi possivel iniciar a gravação de voz'
+                }
+
+                toast.warning(message)
+            }
+
+            speechRecognitionAPI.start()
         } catch (error: any) {
             setIsRecordingVoice(false)
-         toast.warning(error?.message || 'Não foi possivel iniciar a gravação de voz') 
+            toast.warning(error?.message || 'Não foi possivel iniciar a gravação de voz')
+        }
+    }, [handleStopRecordingVoice, handleStopSpeechBySecrectWord, transcriptionVoiceRecord])
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    function handleStopRecordingVoice(){
+        try {            
+            
+            if(speechRecognitionAPI) {
+                speechRecognitionAPI.stop();
+            }
+            
+            setIsRecordingVoice(false)
+            handlerOnShouldShowRecordVoice()
+            handleOnShouldShowTextArea()
+        } catch (error: any) {
+            setIsRecordingVoice(false)
+            toast.warning(error?.message || 'Não foi possivel iniciar a gravação de voz') 
+        }
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    function handleStopSpeechBySecrectWord(transcription: string){
+        try {
+            if(transcription.trim() === '') return
+
+            if(!transcription.toLocaleLowerCase().includes('finalizar')) return
+
+            handleStopRecordingVoice()
+        } catch (error: any) {
+            toast.warning(error?.message || 'Não foi possivel finalizar a gravação por comando de voz')
         }
     }
 
@@ -90,6 +190,10 @@ export function Create({ title,onCreated }: ICreateProps) {
 
                 <p className="text-small leading-6 text-slate-400">
                     Comece <button onClick={handlerOnShouldShowRecordVoice} type="button" className="text-lime-400 font-medium hover:underline"> gravando uma nota </button> em áudio ou se preferir <button onClick={handleOnShouldShowTextArea} type="button" className="text-lime-400 font-medium hover:underline"> utilize apenas texto </button>.
+                </p>
+
+                <p data-isrecordingvoice={isRecordingVoice} className="hidden data-[isrecordingvoice=true]:inline-block text-small leading-6 text-slate-400 cursor-default select-none">
+                    {transcriptionVoiceRecord}
                 </p>
 
                 <form onSubmit={handlerOnSubmitForm} name="notes-form" id="notes-form" className="w-full h-2/3">
@@ -108,26 +212,50 @@ export function Create({ title,onCreated }: ICreateProps) {
                         "
                         placeholder="Digite seu texto..."
                         onChange={handleOnChangeTextArea}
+                        defaultValue={transcriptionVoiceRecord}
                     />
                 </form>
 
                 <button
-                    onClick={handleStartRecordingVoice}
                     data-shouldShowButtonSaveAudioNote={shouldShowRecordVoice && !shouldShowTextArea} 
-                    type="submit" 
-                    form="notes-form" 
-                    className="hidden data-[shouldShowButtonSaveAudioNote=true]:block 
+                    data-isrecordingvoice={isRecordingVoice}
+                    type="button"
+                    className="hidden
+                        w-full 
+                        data-[shouldShowButtonSaveAudioNote=true]:block 
                         absolute bottom-0 
                         left-0 right-0 
-                        bg-slate-900 hover:bg-red-500 
+                        bg-slate-900 data-[isrecordingvoice=false]:hover:bg-lime-400
+                        
                         py-4 text-center text-slate-300
+                        data-[isrecordingvoice=false]:hover:text-slate-600
                         outline-none font-medium
                     "
-                > 
-                    {isRecordingVoice ? "Gravando..." : 'Iniciar Gravação' }
+                >
+                    <span
+                        title="Clique aqui para pausar a gravação de audio de voz"
+                        data-isrecordingvoice={isRecordingVoice}  
+                        role="button" 
+                        onClick={handleStopRecordingVoice} 
+                        className="hidden data-[isrecordingvoice=true]:flex flex-row items-center justify-center gap-3 w-full h-full"
+                    >
+                        <span className="block size-3 bg-red-500 animate-pulse rounded-full"></span>
+
+                        Gravando... (clique p/ terminar)
+                    </span> 
+
+                    <span
+                        title="Clique aqui para iniciar a gravação de audio de voz"
+                        data-isrecordingvoice={isRecordingVoice} 
+                        onClick={handleStartRecordingVoice} 
+                        role="button" 
+                        className="hidden data-[isrecordingvoice=true]:pointer-events-none data-[isrecordingvoice=false]:flex flex-row items-center justify-center gap-3 w-full h-full"
+                    >
+                        Iniciar Gravação
+                    </span>
                 </button>
 
-                <button data-shouldShowButtonSaveTextNote={!shouldShowRecordVoice && shouldShowTextArea} type="submit" form="notes-form" className="hidden data-[shouldShowButtonSaveTextNote=true]:block absolute bottom-0 left-0 right-0 bg-lime-400 hover:bg-lime-500 py-4 text-center text-lime-950 outline-none font-medium">
+                <button data-shouldShowButtonSaveTextNote={!shouldShowRecordVoice && shouldShowTextArea} type="submit" form="notes-form" className="hidden data-[shouldShowButtonSaveTextNote=false]:pointer-events-none data-[shouldShowButtonSaveTextNote=true]:block absolute bottom-0 left-0 right-0 bg-lime-400 hover:bg-lime-500 py-4 text-center text-lime-950 outline-none font-medium">
                     Salvar Nota
                 </button>
             </div>

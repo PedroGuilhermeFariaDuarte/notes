@@ -16,7 +16,8 @@ export function NotesCard(props: INoteCarsProps) {
         <Dialog.Trigger
           data-addType={props.type === 1} 
           data-noteType={props.type === 2} 
-          className=" flex flex-col gap-3
+          className="flex flex-col gap-3
+            max-sm:w-full
             rounded-md text-left 
             data-[addType=true]:bg-slate-700 data-[noteType=true]:bg-slate-800
             p-5 overflow-hidden
@@ -47,11 +48,11 @@ export function NotesCard(props: INoteCarsProps) {
         </Dialog.Trigger>
         <Dialog.Portal>
           <Dialog.Overlay className="inset-0 fixed bg-black/50">
-            <Dialog.Content             
+            <Dialog.Content
               className="fixed left-1/2 top-1/2 
                 -translate-x-1/2 -translate-y-1/2 
                 w-full max-w-sm md:max-w-[640px]
-                h-full md:h-[60vh]
+                h-full max-sm:max-h-[85%] md:h-[60vh]
                 bg-slate-700 rounded-md
                 overflow-hidden
                 flex flex-col outline-none"

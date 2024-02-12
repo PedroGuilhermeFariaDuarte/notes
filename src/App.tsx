@@ -96,21 +96,21 @@ function App() {
   
   return (
     <>
-      <div className="mx-auto w-full md:max-w-6xl my-12 space-y-6 p-4 md:p-0">
+      <div className="md:mx-auto max-xl:mx-auto  w-full md:max-w-6xl my-12 space-y-6 p-4 md:p-0">
         <img src={NWLLogo} alt="NWL Expert" />
 
         <form className="w-full">
           <input
             type="text"
             placeholder="Busque suas notas..."
-            className="w-full bg-transparent text-2xl font-semibold tracking-tight placeholder:text-slate-500"
+            className="w-full bg-transparent text-sm md:text-md lg:text-lg xl:text-2xl font-semibold tracking-tight placeholder:text-slate-500"
             onChange={handlerOnSearchNotes}
           />        
         </form>
 
         <div className="h-px bg-slate-700 rounded-sm"/>
 
-        <div className="flex flex-col max-sm:items-start max-sm:justify-start md:grid md:grid-cols-3 md:auto-rows-[250px] gap-6">
+        <div className="grid  grid-cols-1 md:grid-cols-2 lg-grid-cols-3 xl:grid-cols-4 md:auto-rows-[250px] gap-6">
           <NotesCard  
             onCreated={handlerOnNoteCreated} 
             onDeleted={handlerOnNoteDeleted} 
